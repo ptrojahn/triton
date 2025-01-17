@@ -142,7 +142,7 @@ static Value shuffleCommon(Location loc, RewriterBase &rewriter,
       Value offset = i32_val(0x401F);
       return rewriter.create<ROCDL::DsSwizzleOp>(loc, valType, val, offset);
     } else {
-      if (isaFamily != ISAFamily::CDNA2 && isaFamily != ISAFamily::CDNA3) {
+      if (isaFamily != ISAFamily::CDNA2 && isaFamily != ISAFamily::CDNA3 && isaFamily != ISAFamily::RDNA3) {
         // DPP is only supportted for CDNA2 and CDNA3 right now, so we fallback
         // to ds_swizzle for other archs.
         //
@@ -188,8 +188,10 @@ static Value shuffleCommon(Location loc, RewriterBase &rewriter,
                                            allBanks);
       }
       case 4: {
+        return createDppOpWithoutBoundCtrl(val, val, static_cast<uint32_t>(DppCtrl::RowHalfMirror), allRows,
+                                           allBanks);
         // row_shr:4 bank_mask: 0xa
-        auto ret = createDppOpWithoutBoundCtrl(
+        /*auto ret = createDppOpWithoutBoundCtrl(
                        val, val, 4 + static_cast<uint32_t>(DppCtrl::ROW_SHR0),
                        allRows, 0xa)
                        .getRes();
@@ -197,7 +199,7 @@ static Value shuffleCommon(Location loc, RewriterBase &rewriter,
         // row_shl:4 bank_mask: 0x5
         return createDppOpWithoutBoundCtrl(
             ret, val, 4 + static_cast<uint32_t>(DppCtrl::ROW_SHL0), allRows,
-            0x5);
+            0x5);*/
       }
       case 8: {
         // row_shr:8 bank_mask: 0xc

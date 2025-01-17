@@ -24,6 +24,10 @@ ISAFamily deduceISAFamily(llvm::StringRef arch);
 // https://github.com/llvm/llvm-project/blob/8c75290/llvm/lib/Target/AMDGPU/SIDefines.h#L939
 enum class DppCtrl : uint32_t {
   QUAD_PERM_FIRST = 0,
+  QuadPerm1032 = 0xb1,
+  QuadPerm2301 = 0x4e,
+  RowHalfMirror = 0x141,
+  RowMirror = 0x140,
   ROW_SHL0 = 0x100,
   ROW_SHR0 = 0x110,
   BCAST15 = 0x142,

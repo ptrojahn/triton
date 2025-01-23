@@ -5,8 +5,6 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "triton/Conversion/TritonGPUToLLVM/Utility.h"
 
-#include <iostream>
-
 using mlir::triton::AMD::DppCtrl;
 namespace mlir::triton::AMD {
 
@@ -183,14 +181,10 @@ bool TargetInfo::warpReduce(RewriterBase &rewriter, Location loc,
                             SmallVector<Value> &acc, triton::ReduceOp op,
                             unsigned numLaneToReduce,
                             unsigned interleave) const {
-  //std::cout << "numLaneToReduce: " << numLaneToReduce << std::endl;
-  if (numLaneToReduce != 32)
+  auto family = getISAFamily();
+  if (!((numLaneToReduce == 32 && family == ISAFamily::RDNA3
+    || (numLaneToReduce == 64 && family == ISAFamily::CDNA3 && family == ISAFamily::CDNA2))))
     return false;
-
-  /*if (auto family = getISAFamily();
-      family != ISAFamily::CDNA3 && family != ISAFamily::CDNA2) {
-    return false;
-  }*/
 
   Operation *reduxOp = op.getSingleCombiner();
   if (!reduxOp)
@@ -231,50 +225,100 @@ bool TargetInfo::warpReduce(RewriterBase &rewriter, Location loc,
     Value buf;
     auto valType = acc[i].getType();
 
+    // Here's the implementation of full-wavefront reduction using dpp.
+    // https://gpuopen.com/learn/amd-gcn-assembly-cross-lane-operations/
+    //
+    // Each step has a v_mov_dpp instruction following the redux op. In
+    // some cases, the lower-level compiler could merge them into single
+    // instruction. For example, v_mov_dpp + max => v_max_dpp.
+    //
+    // For gfx9, we have 64 threads per warp. These 64 threads are arranged
+    // into 4 rows, with each row being 16 threads. Each 16 threads are arranged
+    // further into 4 banks, with each bank being 4 threads. Overall it's in a
+    // (row, bank, thread) structure. When shuffling, we use row/bank mask to
+    // indicate which row/bank to participate. Then modifier like row_shr and
+    // row_bcast means exact data movement schemes. In the following
+    // instructions, taking row 0 as an example:
+    //
+    // Step 1: Right shift for 8 lanes.
+    //     lane 8-15 = redux(lane 0-7, lane 8-15)
+    //
+    // Step 2: Right shift for 4 lanes.
+    //     lane 12-15 = redux(lane 8-11, lane 12-15)
+    //
+    // Step 3: Right shift for 2 lanes.
+    //     lane 14-15 = redux(lane 12-13, lane 14-15)
+    //
+    // Step 4: Right shift for 1 lane.
+    //     lane 15 = redux(lane 14, lane 15)
+    //
+    // Step 5: Broadcast lane 15 of each row to all the lanes of its next row.
+    //     lane 16-31 = redux(lane 15, lane 16-31)
+    //
+    // Step 6: Broadcast lane 31 to lane 32-63.
+    //     lane 32-63 = redux(lane 31, lane 32-63)
+    //
+    // Now the reduction result is stored in lane 63.
+    //
+    // Step 7: Read the reduction result from lane 63 and broadcast with
+    // readlane.
+
     const int allRows = 0xf;
     const int allBanks = 0xf;
 
-    // Addition over clusters of four lanes
-    // A, B, C, D -> A+B, B+A, C+D, D+C
-    buf = createDppReduxOpWithBoundCtrl(valType, acc[i], static_cast<uint32_t>(DppCtrl::QuadPerm1032),
+    const uint32_t dppCtrlRowShr = static_cast<uint32_t>(DppCtrl::ROW_SHR0);
+
+    // row_shr:8
+    buf = createDppReduxOpWithBoundCtrl(valType, acc[i], 8 + dppCtrlRowShr,
                                         allRows, allBanks);
 
-    // E, E, F, F -> E+F, E+F, F+E, F+E
-    buf = createDppReduxOpWithBoundCtrl(valType, buf, static_cast<uint32_t>(DppCtrl::QuadPerm2301),
+    // row_shr:4
+    buf = createDppReduxOpWithBoundCtrl(valType, buf, 4 + dppCtrlRowShr,
                                         allRows, allBanks);
 
-    // Add adjacent clusters of 4 lanes
-    buf = createDppReduxOpWithBoundCtrl(valType, buf, static_cast<uint32_t>(DppCtrl::RowHalfMirror),
+    // row_shr:2
+    buf = createDppReduxOpWithBoundCtrl(valType, buf, 2 + dppCtrlRowShr,
                                         allRows, allBanks);
 
-    // Add adjacent clusters of 8 lanes
-    buf = createDppReduxOpWithBoundCtrl(valType, buf, static_cast<uint32_t>(DppCtrl::RowMirror),
+    // row_shr:1
+    buf = createDppReduxOpWithBoundCtrl(valType, buf, 1 + dppCtrlRowShr,
                                         allRows, allBanks);
 
-    // Similarly, we need to cast data types for permlanex16 instruction.
-    Type actualType = castToAndSExtInt(rewriter, loc, buf, valType, 32);
+    if (family == ISAFamily::CDNA3 && family == ISAFamily::CDNA2) {
+      // row_bcast:15 row_mask:0xa
+      buf = createDppReduxOpWithBoundCtrl(
+          valType, buf, static_cast<uint32_t>(DppCtrl::BCAST15), 0xa, allBanks);
+    } else {
+      // RDNA doesn't have broadcast dpp mode
+      Type actualType = castToAndSExtInt(rewriter, loc, buf, valType, 32);
+      Value permlaneResult = LLVM::createLLVMIntrinsicCallOp(rewriter, loc, "llvm.amdgcn.permlanex16", actualType, ValueRange{i32_val(0), buf, i32_val(-1), i32_val(-1), true_val(), false_val()})->getResult(0);
+      buf = truncAndCastFromInt(rewriter, loc, buf, valType, 32);
+      permlaneResult = truncAndCastFromInt(rewriter, loc, permlaneResult, valType, 32);
+      IRMapping mapping;
+      mapping.map(reduxOp->getOperand(0), buf);
+      mapping.map(reduxOp->getOperand(1), permlaneResult);
+      buf = rewriter.clone(*reduxOp, mapping)->getResult(0);
+    }
 
-    // Add adjacent clusters of 16 lanes by reading the last lane of the adjacent row(16 lanes) for all lanes in the current row
-    // @param origValue : The original value we are going to update.
-    // @param updateValue : The value to update with.
-    // @param selectBitsLow : Select bits low.
-    // @param selectBitsHigh : Select bits high.
-    // @param fetchInactive : FI mode, whether to fetch inactive lane.
-    // @param boundCtrl : Whether bound_ctrl is used or not.
-    Value result = LLVM::createLLVMIntrinsicCallOp(rewriter, loc, "llvm.amdgcn.permlanex16", actualType, ValueRange{i32_val(0), buf, i32_val(-1), i32_val(-1), true_val(), false_val()})->getResult(0);
+    if (family == ISAFamily::CDNA3 && family == ISAFamily::CDNA2 && numLaneToReduce == 64) {
+      buf = createDppReduxOpWithBoundCtrl(valType, buf,
+                                        static_cast<uint32_t>(DppCtrl::BCAST31),
+                                        allRows, allBanks);
+    } else {
+      // TODO: Create wave64 alternative for RDNA
+    }
 
-    result = truncAndCastFromInt(rewriter, loc, result, valType, 32);
-    buf = truncAndCastFromInt(rewriter, loc, buf, valType, 32);
-    // Do the final addition after the 16 element mirrow 
-    IRMapping mapping;
-    mapping.map(reduxOp->getOperand(0), buf);
-    mapping.map(reduxOp->getOperand(1), result);
-    result = rewriter.clone(*reduxOp, mapping)->getResult(0);
+    // Similarly, we need to cast data types for readlane instruction.
+    Type actualType = castToAndSExtInt(rewriter, loc, buf, valType, 16);
 
-    // Get reduction result from lane 31
-    result = LLVM::createLLVMIntrinsicCallOp(rewriter, loc, "llvm.amdgcn.readlane", valType, ValueRange{result, i32_val(31)})->getResult(0);
+    // Get reduction result from lane 63/
+    std::string intrinsic = "llvm.amdgcn.readlane";
+    Value result =
+        LLVM::createLLVMIntrinsicCallOp(rewriter, loc, intrinsic, actualType,
+                                        ValueRange{buf, i32_val(63)})
+            ->getResult(0);
 
-    result = truncAndCastFromInt(rewriter, loc, result, valType, 32);
+    result = truncAndCastFromInt(rewriter, loc, result, valType, 16);
 
     acc[i] = result;
   }

@@ -292,22 +292,7 @@ bool TargetInfo::warpReduce(RewriterBase &rewriter, Location loc,
       // RDNA doesn't have broadcast dpp mode
       Type actualType = castToAndSExtInt(rewriter, loc, buf, valType, 32);
       
-      // TODO Why is automatic 64bit decomposition available for llvm.amdgcn.readlane, but not for llvm.amdgcn.permlanex16?
-      Value permlaneResult;
-      if (actualType.getIntOrFloatBitWidth() == 64) {
-        Type vecTy = vec_ty(i32_ty, 2);
-        Value vec = bitcast(buf, vecTy);
-        Value val0 = extract_element(i32_ty, vec, i32_val(0));
-        Value val1 = extract_element(i32_ty, vec, i32_val(1));
-        val0 = LLVM::createLLVMIntrinsicCallOp(rewriter, loc, "llvm.amdgcn.permlanex16", i32_ty, ValueRange{i32_val(0), val0, i32_val(-1), i32_val(-1), true_val(), false_val()})->getResult(0);
-        val1 = LLVM::createLLVMIntrinsicCallOp(rewriter, loc, "llvm.amdgcn.permlanex16", i32_ty, ValueRange{i32_val(0), val1, i32_val(-1), i32_val(-1), true_val(), false_val()})->getResult(0);
-        vec = undef(vecTy);
-        vec = insert_element(vecTy, vec, val0, i32_val(0));
-        vec = insert_element(vecTy, vec, val1, i32_val(1));
-        permlaneResult = bitcast(vec, actualType);
-      } else {
-        permlaneResult = LLVM::createLLVMIntrinsicCallOp(rewriter, loc, "llvm.amdgcn.permlanex16", actualType, ValueRange{i32_val(0), buf, i32_val(-1), i32_val(-1), true_val(), false_val()})->getResult(0);
-      }
+      Value permlaneResult = LLVM::createLLVMIntrinsicCallOp(rewriter, loc, "llvm.amdgcn.permlanex16", actualType, ValueRange{buf, buf, i32_val(-1), i32_val(-1), true_val(), false_val()})->getResult(0);
       buf = truncAndCastFromInt(rewriter, loc, buf, valType, 32);
       permlaneResult = truncAndCastFromInt(rewriter, loc, permlaneResult, valType, 32);
       IRMapping mapping;

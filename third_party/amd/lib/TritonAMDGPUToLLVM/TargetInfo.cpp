@@ -182,8 +182,8 @@ bool TargetInfo::warpReduce(RewriterBase &rewriter, Location loc,
                             unsigned numLaneToReduce,
                             unsigned interleave) const {
   auto family = getISAFamily();
-  if (!((numLaneToReduce == 32 && family == ISAFamily::RDNA3
-    || (numLaneToReduce == 64 && family == ISAFamily::CDNA3 && family == ISAFamily::CDNA2))))
+  if (!(numLaneToReduce == 32 && family == ISAFamily::RDNA3
+    || numLaneToReduce == 64 && (family == ISAFamily::CDNA3 || family == ISAFamily::CDNA2)))
     return false;
 
   Operation *reduxOp = op.getSingleCombiner();
@@ -284,7 +284,7 @@ bool TargetInfo::warpReduce(RewriterBase &rewriter, Location loc,
     buf = createDppReduxOpWithBoundCtrl(valType, buf, 1 + dppCtrlRowShr,
                                         allRows, allBanks);
 
-    if (family == ISAFamily::CDNA3 && family == ISAFamily::CDNA2) {
+    if (family == ISAFamily::CDNA3 || family == ISAFamily::CDNA2) {
       // row_bcast:15 row_mask:0xa
       buf = createDppReduxOpWithBoundCtrl(
           valType, buf, static_cast<uint32_t>(DppCtrl::BCAST15), 0xa, allBanks);
@@ -301,7 +301,7 @@ bool TargetInfo::warpReduce(RewriterBase &rewriter, Location loc,
       buf = rewriter.clone(*reduxOp, mapping)->getResult(0);
     }
 
-    if (family == ISAFamily::CDNA3 && family == ISAFamily::CDNA2 && numLaneToReduce == 64) {
+    if ((family == ISAFamily::CDNA3 || family == ISAFamily::CDNA2) && numLaneToReduce == 64) {
       buf = createDppReduxOpWithBoundCtrl(valType, buf,
                                         static_cast<uint32_t>(DppCtrl::BCAST31),
                                         allRows, allBanks);

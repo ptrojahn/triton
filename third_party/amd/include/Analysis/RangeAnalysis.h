@@ -118,7 +118,10 @@ struct TritonIntegerRangeAnalysis : dataflow::IntegerRangeAnalysis {
 
 std::optional<SmallVector<ConstantIntRanges>>
 collectRanges(const DataFlowSolver &solver, ValueRange values);
+
 bool cmpIIsStaticallyTrue(const DataFlowSolver &solver, arith::CmpIOp cmpOp);
+
+bool isEmptyInitializedRange(ConstantIntRanges rv);
 
 } // namespace mlir::triton::AMD
 

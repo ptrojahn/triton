@@ -308,7 +308,7 @@ struct LoadOpConversion : public ConvertOpToLLVMPattern<triton::LoadOp>,
 
           size_t size = width / valueElemNBits;
 
-          auto vecTy = LLVM::getFixedVectorType(valueElemTy, size);
+          auto vecTy = LLVM::getVectorType(valueElemTy, size);
           Value v = b.undef(vecTy);
           for (size_t s = 0; s < size; ++s) {
             Value falseVal = otherElems[vecStart + ii * size + s];
@@ -382,8 +382,8 @@ struct LoadOpConversion : public ConvertOpToLLVMPattern<triton::LoadOp>,
         } else {
           curr = ret;
         }
-        curr = b.bitcast(curr, LLVM::getFixedVectorType(
-                                   valueElemTy, width / valueElemNBits));
+        curr = b.bitcast(
+            curr, LLVM::getVectorType(valueElemTy, width / valueElemNBits));
         rets.push_back(curr);
       }
       int tmp = width / valueElemNBits;

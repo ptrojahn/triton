@@ -194,7 +194,7 @@ struct ConvertBuiltinFuncToLLVM
     ModuleOp mod = getOperation();
 
     GreedyRewriteConfig config;
-    config.enableRegionSimplification = GreedySimplifyRegionLevel::Aggressive;
+    config.setRegionSimplificationLevel(GreedySimplifyRegionLevel::Aggressive);
 
     RewritePatternSet patterns(context);
     patterns.add<CallOpConversion>(context, this->ftz);

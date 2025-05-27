@@ -300,9 +300,7 @@ public:
     auto srcType = cast<RankedTensorType>(op.getSrc().getType());
     auto dstType = cast<RankedTensorType>(op.getType());
 
-    auto wmmaLayout = dyn_cast<AMDWmmaEncodingAttr>(srcType.getEncoding());
-    auto dotOperandLayout = dyn_cast<DotOperandEncodingAttr>(dstType.getEncoding());
-    if (!wmmaLayout || !dotOperandLayout)
+    if (!matchWMMAAndDotOperandShuffleCase(srcType, dstType))
       return failure();
 
     auto loc = op.getLoc();

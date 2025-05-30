@@ -10,7 +10,6 @@
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Tools/LayoutUtils.h"
 #include "llvm/ADT/TypeSwitch.h"
-#include <iostream>
 
 namespace tt = mlir::triton;
 namespace ttg = mlir::triton::gpu;
@@ -1016,7 +1015,7 @@ public:
     auto CTALayout = ttg::getCTALayout(oldRetEncoding);
 
     // TODO implement heuristic/option for this parameter
-    bool isTransposed = isChainDotHead(dotOp);//isChainDotTail(dotOp);
+    bool isTransposed = isChainDotHead(dotOp) || isChainDotTail(dotOp);
     wmmaEnc = ttg::AMDWmmaEncodingAttr::get(ctx, wmmaVersion, isTransposed,
                                             warpsPerTile, CTALayout);
 

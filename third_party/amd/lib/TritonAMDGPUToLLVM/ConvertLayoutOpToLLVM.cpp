@@ -348,6 +348,8 @@ void mlir::triton::AMD::populateConvertLayoutOpToLLVMPatterns(
     RewritePatternSet &patterns, PatternBenefit benefit) {
   patterns.add<ConvertLayoutOpMFMAToDotOpConversion>(typeConverter, targetInfo,
                                                      benefit);
+  patterns.add<ConvertLayoutOpMFMAToLinearConversion>(typeConverter, targetInfo,
+                                                      benefit);
   patterns.add<ConvertLayoutOpWMMAToDotOpConversion>(typeConverter, targetInfo,
                                                      benefit);
 }

@@ -78,6 +78,16 @@ def TritonAMDGPUHoistLayoutConversions : Pass<"tritonamdgpu-hoist-layout-convers
 
 }
 
+def TritonAMDGPUOptimizeWMMALayoutConversions : Pass<"tritonamdgpu-optimize-wmma-layout-conversions", "mlir::ModuleOp"> {
+  let summary = "Avoid lane duplication for tensors that are resident for a long time";
+
+  let description = [{
+  This pass replaces dot_op<amd_wmma> tensors with amd_wmma tensors to reduce register allocation through lane duplication.
+  The values are converted back right before each use through swizzle ops.
+  }];
+
+}
+
 def TritonAMDGPUCanonicalizePointers : Pass<"tritonamdgpu-canonicalize-pointers", "mlir::triton::FuncOp"> {
   let summary = "Canonicalize pointers: rewrite pointers passed to load/store operation as a `<basePtr, offset>` pair.";
 

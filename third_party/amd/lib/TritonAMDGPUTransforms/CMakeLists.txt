@@ -6,6 +6,7 @@ add_triton_library(TritonAMDGPUTransforms
   ConvertToBufferOps.cpp
   OptimizeEpilogue.cpp
   HoistLayoutConversions.cpp
+  OptimizeWMMALayoutConversions.cpp
   ReorderInstructions.cpp
   StreamPipeline.cpp
   MfmaGroup.cpp

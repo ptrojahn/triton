@@ -214,7 +214,7 @@ static void scheduleGlobalLoadLocalStore(Operation *parentOp) {
       // Only move ops residing in the same block.
       return defBlock == block;
     };
-    mlir::getBackwardSlice(op, &backwardSet, options);
+    (void)mlir::getBackwardSlice(op, &backwardSet, options);
     backwardSet.insert(op);
 
     // Don't move a local_store if its source is a load from

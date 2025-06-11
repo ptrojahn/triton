@@ -632,7 +632,7 @@ FailureOr<scf::ForOp> preProcessLoopForTC05MMAPipelining(scf::ForOp forOp,
     SetVector<Operation *> backwardSlice;
     BackwardSliceOptions opt;
     opt.omitBlockArguments = true;
-    getBackwardSlice(mmaOp, &backwardSlice, opt);
+    (void)getBackwardSlice(mmaOp, &backwardSlice, opt);
     if (llvm::any_of(backwardSlice, [&](Operation *op) {
           return op->hasAttr(kPipelineStageAttrName);
         })) {

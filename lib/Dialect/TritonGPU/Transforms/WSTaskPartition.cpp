@@ -97,8 +97,8 @@ void doPartition(triton::FuncOp &funcOp, unsigned numConsumerGroups) {
     if (!dotOp)
       continue;
     SetVector<Operation *> backwardSlice;
-    getBackwardSlice(dotOp.getA(), &backwardSlice, opt);
-    getBackwardSlice(dotOp.getB(), &backwardSlice, opt);
+    (void)getBackwardSlice(dotOp.getA(), &backwardSlice, opt);
+    (void)getBackwardSlice(dotOp.getB(), &backwardSlice, opt);
     for (auto depOp : backwardSlice) {
       if (isa<ExperimentalDescriptorLoadOp>(depOp)) {
         producerOps.insert(depOp);

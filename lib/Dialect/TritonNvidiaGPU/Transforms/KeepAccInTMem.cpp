@@ -50,7 +50,7 @@ public:
     mlir::BackwardSliceOptions opt;
     opt.omitBlockArguments = true;
     opt.filter = bwdFilter;
-    getBackwardSlice(data, &slice, opt);
+    (void)getBackwardSlice(data, &slice, opt);
     Attribute encoding;
     for (auto op : slice) {
       if (auto tmemLoad = dyn_cast<ttng::TMEMLoadOp>(op)) {

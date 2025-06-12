@@ -320,17 +320,26 @@ public:
     Value laneId = b.urem(threadId, c32);
     Value is_lower = b.icmp_slt(laneId, c16);
 
+    auto vecTy = vec_ty(i16_ty, 2);
     SmallVector<Value> outVals;
-    for (Value val : inVals) {
+    for (int i = 0; i < inVals.size(); i += 2) {
+      Value vec0 = b.undef(vecTy);
+      for (size_t vIdx = 0; vIdx < 2; ++vIdx) {
+        vec0 = b.insert_element(vecTy, vec0, b.bitcast(inVals[i + vIdx], i16_ty), b.i32_val(vIdx));
+      }
       // Uncompress a single half VGPR consisting of two rows into two half VGPRs with duplicated data in the upper 16 lanes
       std::string permlanex16 = "llvm.amdgcn.permlanex16";
-      Value valInt16 = b.bitcast(val, int_ty(16));
-      Value val_swapped = b.bitcast(LLVM::createLLVMIntrinsicCallOp(
-                      rewriter, loc, permlanex16, int_ty(16),
-                      ValueRange{valInt16, valInt16, b.i32_val(0x76543210), b.i32_val(0xFEDCBA98), b.true_val(), b.false_val()})
-                      ->getResult(0), dstType.getElementType());
-      outVals.push_back(b.select(is_lower, val, val_swapped));
-      outVals.push_back(b.select(is_lower, val_swapped, val));
+      Value valInt32 = b.bitcast(vec0, i32_ty);
+      Value val_swapped = LLVM::createLLVMIntrinsicCallOp(
+                      rewriter, loc, permlanex16, i32_ty,
+                      ValueRange{valInt32, valInt32, b.i32_val(0x76543210), b.i32_val(0xFEDCBA98), b.true_val(), b.false_val()})
+                      ->getResult(0);
+      Value first = b.bitcast(b.select(is_lower, valInt32, val_swapped), vecTy);
+      Value second = b.bitcast(b.select(is_lower, val_swapped, valInt32), vecTy);
+      outVals.push_back(b.bitcast(b.extract_element(i16_ty, first, b.i32_val(0)), dstType.getElementType()));
+      outVals.push_back(b.bitcast(b.extract_element(i16_ty, second, b.i32_val(0)), dstType.getElementType()));
+      outVals.push_back(b.bitcast(b.extract_element(i16_ty, first, b.i32_val(1)), dstType.getElementType()));
+      outVals.push_back(b.bitcast(b.extract_element(i16_ty, second, b.i32_val(1)), dstType.getElementType()));
     }
 
     Value result = packLLElements(loc, getTypeConverter(), outVals, rewriter,

@@ -2,6 +2,7 @@
 #include "mlir/Pass/PassManager.h"
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/Transforms/Utility.h"
+#include <iostream>
 
 namespace tt = mlir::triton;
 namespace ttg = mlir::triton::gpu;
@@ -14,7 +15,7 @@ namespace mlir {
 namespace {
 
 static void loadAsMma(ttg::LocalLoadOp loadOp) {
-  OpBuilder b(loadOp);
+  IRRewriter b(loadOp);
   //ttg::BlockedEncodingAttr::get(ctx, shape, newSizePerThread, order,
   //                                     numWarps, threadsPerWarp, numCTAs);
   // Check the dst of cvt has dotOperand layout
@@ -28,22 +29,34 @@ static void loadAsMma(ttg::LocalLoadOp loadOp) {
     return;
 
   // Iterate over all uses and check if they are in a loop
+  llvm::outs() << "getUses()\n";
+  loadOp->dumpPretty();
+  bool doRematerialization = false;
   for (auto &use : loadOp.getResult().getUses()) {
-    scf::ForOp parentForOp = use.getOwner()->getParentOfType<scf::ForOp>();
+    llvm::outs() << "check\n";
+    Operation* operation = use.getOwner();
+    scf::ForOp parentForOp = operation->getParentOfType<scf::ForOp>();
     if (!parentForOp || parentForOp->isAncestor(loadOp)) {
       continue;
     }
+    doRematerialization = true;
+  }
+
+  if (doRematerialization) {
     // Change target layout of the local_load to wmma and convert to dot_op right before the dot
     b.setInsertionPoint(loadOp);
     auto origTensorType = cast<RankedTensorType>(loadOp.getResult().getType());
     auto dotOpLayout = cast<mlir::triton::gpu::DotOperandEncodingAttr>(origTensorType.getEncoding());
     auto newTensorType = cast<RankedTensorType>(loadOp.getResult().getType()).cloneWithEncoding(dotOpLayout.getParent());
-    auto mmaValue = b.create<ttg::LocalLoadOp>(use.getOwner()->getLoc(), newTensorType, loadOp.getOperand(0));
-
-    // Convert back right before the use
-    b.setInsertionPoint(use.getOwner());
-    auto dotOpValue = b.create<ttg::ConvertLayoutOp>(use.getOwner()->getLoc(), origTensorType, mmaValue);
-    use.set(dotOpValue);
+    auto mmaValue = b.create<ttg::LocalLoadOp>(loadOp.getLoc(), newTensorType, loadOp.getOperand(0));
+    for (auto &use : llvm::make_early_inc_range(loadOp.getResult().getUses())) {
+      Operation* operation = use.getOwner();
+      // Convert back right before the use
+      b.setInsertionPoint(use.getOwner());
+      auto dotOpValue = b.create<ttg::ConvertLayoutOp>(use.getOwner()->getLoc(), origTensorType, mmaValue);
+      b.modifyOpInPlace(operation, [&]() { use.set(dotOpValue); });
+    }
+    loadOp->erase();
   }
 }
 

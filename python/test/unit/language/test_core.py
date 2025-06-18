@@ -35,6 +35,7 @@ from triton._internal_testing import (
     is_hip_mi200,
     is_hip_mi300,
     is_hip_mi350,
+    is_hip_gfx12,
     is_xpu,
     get_arch,
     torch_float8_dtypes,
@@ -3558,7 +3559,7 @@ def test_dot(M, N, K, num_warps, col_a, col_b, epilogue, input_precision, in_dty
                 pytest.skip("float8e4nv not supported on sm <= 80")
 
         if is_hip():
-            if in_dtype in ("float8e5", "float8e4nv") and not is_hip_mi350():
+            if in_dtype in ("float8e5", "float8e4nv") and not (is_hip_mi350() or is_hip_gfx12()):
                 pytest.skip(f"{in_dtype} only supported on mi350")
             if in_dtype in ("float8e5b16", "float8e4b8") and not is_hip_mi300():
                 pytest.skip(f"{in_dtype} only supported on mi300")

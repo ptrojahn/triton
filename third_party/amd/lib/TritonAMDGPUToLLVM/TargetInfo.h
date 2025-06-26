@@ -15,6 +15,8 @@ public:
 
   llvm::AMDGPU::GPUKind getGPUKind() const;
 
+  int getWarpSize() const;
+
   int getSharedMemorySize() const;
 
   bool supportMaximumMinimum() const override;

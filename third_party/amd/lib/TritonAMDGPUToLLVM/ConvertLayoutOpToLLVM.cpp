@@ -182,9 +182,86 @@ protected:
 
 } // namespace
 
+struct ConvertLayoutOpWMMAToDotOpConversion
+    : public ConvertOpToLLVMPattern<triton::gpu::ConvertLayoutOp> {
+public:
+  explicit ConvertLayoutOpWMMAToDotOpConversion(
+      LLVMTypeConverter &typeConverter, const TargetInfoBase &targetInfo,
+      PatternBenefit benefit)
+      : ConvertOpToLLVMPattern<triton::gpu::ConvertLayoutOp>(typeConverter,
+                                                             benefit),
+        targetInfo(targetInfo) {}
+
+  LogicalResult
+  matchAndRewrite(triton::gpu::ConvertLayoutOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto srcType = cast<RankedTensorType>(op.getSrc().getType());
+    auto dstType = cast<RankedTensorType>(op.getType());
+
+    if (!matchWMMAAndDotOperandShuffleCase(srcType, dstType))
+      return failure();
+
+    auto loc = op.getLoc();
+    auto b = TritonLLVMOpBuilder(loc, rewriter);
+
+    SmallVector<Value> inVals =
+        unpackLLElements(loc, adaptor.getSrc(), rewriter);
+    if (inVals.empty())
+      return failure();
+
+    auto wmmaLayout = dyn_cast<AMDWmmaEncodingAttr>(srcType.getEncoding());
+    assert(triton::gpu::getWarpSize(wmmaLayout) == 32 &&
+           "Expected warp size 32 for WMMA");
+
+    auto valType = srcType.getElementType();
+
+    Value c32 = b.i32_val(32);
+    Value c16 = b.i32_val(16);
+    Value threadId = getThreadId(rewriter, loc);
+    Value laneId = b.urem(threadId, c32);
+    Value is_lower = b.icmp_slt(laneId, c16);
+
+    auto vecTy = vec_ty(valType, 2);
+    SmallVector<Value> outVals;
+    // We inflate two 16bit elements at a time
+    for (int i = 0; i < inVals.size(); i += 2) {
+      Value val = b.undef(vecTy);
+      val = b.insert_element(vecTy, val, b.bitcast(inVals[i], valType),
+                             b.i32_val(0));
+      val = b.insert_element(vecTy, val, b.bitcast(inVals[i + 1], valType),
+                             b.i32_val(1));
+      // Exchange data between the bottom and upper 16 lanes and construct the
+      // data duplication
+      std::string permlanex16 = "llvm.amdgcn.permlanex16";
+      Value val_swapped =
+          LLVM::createLLVMIntrinsicCallOp(
+              rewriter, loc, permlanex16, vecTy,
+              ValueRange{val, val, b.i32_val(0x76543210), b.i32_val(0xFEDCBA98),
+                         b.true_val(), b.false_val()})
+              ->getResult(0);
+      Value first = b.select(is_lower, val, val_swapped);
+      Value second = b.select(is_lower, val_swapped, val);
+      outVals.push_back(b.extract_element(valType, first, b.i32_val(0)));
+      outVals.push_back(b.extract_element(valType, second, b.i32_val(0)));
+      outVals.push_back(b.extract_element(valType, first, b.i32_val(1)));
+      outVals.push_back(b.extract_element(valType, second, b.i32_val(1)));
+    }
+
+    Value result = packLLElements(loc, getTypeConverter(), outVals, rewriter,
+                                  op.getType());
+    rewriter.replaceOp(op, result);
+    return success();
+  }
+
+protected:
+  const TargetInfoBase &targetInfo;
+};
+
 void mlir::triton::AMD::populateConvertLayoutOpToLLVMPatterns(
     LLVMTypeConverter &typeConverter, const TargetInfo &targetInfo,
     RewritePatternSet &patterns, PatternBenefit benefit) {
   patterns.add<ConvertLayoutOpMFMAToDotOpConversion>(typeConverter, targetInfo,
+                                                     benefit);
+  patterns.add<ConvertLayoutOpWMMAToDotOpConversion>(typeConverter, targetInfo,
                                                      benefit);
 }

@@ -154,6 +154,22 @@ def TritonAMDGPUConvertToBufferOps : Pass<"tritonamdgpu-convert-buffer-ops", "ml
   ];
 }
 
+def TritonAMDGPUConvertToTransposeLoads : Pass<"tritonamdgpu-convert-transpose-loads", "mlir::ModuleOp"> {
+  let summary = "Convert memory operations to buffer operations";
+
+  let description = "This pass converts memory and atomic operations (e.g., tt.load/tt.store/tt.atomic_rmw) to  amdgpu buffer operations, if possible";
+
+  let constructor = "mlir::createTritonAMDGPUConvertToTransposeLoadsPass()";
+
+  let dependentDialects = ["mlir::triton::amdgpu::TritonAMDGPUDialect"];
+
+  /*let options = [
+    Option<"archGenerationName", "arch-generation-name",
+           "std::string", /*default=*/"std::string{}",
+           "GFX generation name of target device.">,
+  ];*/
+}
+
 def TritonAMDGPUBlockPingpong: Pass<"tritonamdgpu-block-pingpong", "mlir::ModuleOp"> {
   let summary = "Interleaving instructions from two warps on the same SIMD to better utilize matrix core";
 

@@ -90,6 +90,7 @@ LinearLayout makeCgaLayout(CTALayoutAttr layout) {
 LinearLayout combineCtaCgaWithShape(LinearLayout ctaLayout,
                                     CTALayoutAttr cgaLayoutAttr,
                                     ArrayRef<int64_t> shape) {
+  llvm::outs() << "=== combineCtaCgaWithShape \n";
   int rank = shape.size();
   assert(ctaLayout.getNumOutDims() == rank);
   assert(cgaLayoutAttr.getCTAOrder().size() == rank);
@@ -116,8 +117,11 @@ LinearLayout combineCtaCgaWithShape(LinearLayout ctaLayout,
         std::max(int64_t{1}, labeledShape[dim] / cgaLayout.getOutDimSize(dim));
   }
 
+  llvm::outs() << "\nStep 1: " << ctaLayout;
   ctaLayout = ensureLayoutNotSmallerThan(ctaLayout, ctaShape);
+  llvm::outs() << "\nStep 2: " << ctaLayout;
   ctaLayout = ensureLayoutNotLargerThan(ctaLayout, ctaShape);
+  llvm::outs() << "\nStep 3: " << ctaLayout << "\n";
 
   LinearLayout ret = (ctaLayout * cgaLayout).transposeOuts(outDimNames);
   for (auto dim : ret.getOutDimNames()) {

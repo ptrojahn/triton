@@ -33,6 +33,8 @@ std::unique_ptr<Pass> createTritonAMDGPUCanonicalizePointersPass();
 std::unique_ptr<Pass> createTritonAMDGPUConvertToBufferOpsPass(
     std::string archGenName = std::string());
 
+std::unique_ptr<Pass> createTritonAMDGPUConvertToTransposeLoadsPass();
+
 std::unique_ptr<Pass>
 createTritonAMDGPUBlockPingpongPass(int32_t numStages = 2);
 

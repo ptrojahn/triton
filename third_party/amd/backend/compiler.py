@@ -243,6 +243,7 @@ class HIPBackend(BaseBackend):
         if options.schedule_hint.lower() != "none":
             amd.passes.ttgpuir.insert_instruction_sched_hints(pm, options.schedule_hint)
         passes.ttgpuir.add_optimize_dot_operands(pm, True)
+        amd.passes.ttgpuir.add_convert_to_transpose_loads(pm)
         passes.ttgpuir.add_remove_layout_conversions(pm)
         passes.ttgpuir.add_reduce_data_duplication(pm)
         if is_in_thread_transpose_enabled(options.arch):

@@ -425,4 +425,81 @@ def InThreadTransposeOp : TT_AMDGPU_Op<"in_thread_transpose", [Pure]> {
   }];
 }
 
+//===----------------------------------------------------------------------===//
+// LoadWarpTranspose
+//===----------------------------------------------------------------------===//
+
+def LoadWarpTransposeOp : TT_AMDGPU_Op<"load_warp_transpose", [
+  //DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
+  //DeclareOpInterfaceMethods<InferTypeOpInterface>,
+  /*TypesMatchWith<"result matches ptr type", "ptr", "result", "getPointeeType($_self)">*/Pure,
+  LayoutAnchor]> {
+  let summary = "Use global_load_tr_128";
+
+  //let hasVerifier = 1;
+
+  let description = [{
+    TODO
+  }];
+
+  let arguments = (ins AnyTypeOf<[TT_PtrLike, TT_TensorPtr]>:$ptr);
+
+  let results = (outs TT_Tensor:$result);
+
+  let assemblyFormat = [{$ptr attr-dict `:` type($ptr) `->` type($result)}];
+
+  /*let extraClassDeclaration = [{
+    static mlir::triton::LinearLayout deduceOutputLayout(mlir::ArrayRef<int64_t> shape,
+                                 mlir::triton::gpu::BlockedEncodingAttr srcEncoding);
+  }];*/
+}
+
+/*
+def TT_LoadOp : TT_Op<"load", [
+  SameLoadStoreOperandsAndResultShape,
+  SameLoadStoreOperandsAndResultEncoding,
+  AttrSizedOperandSegments,
+  DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
+  DeclareOpInterfaceMethods<InferTypeOpInterface>,
+  TypesMatchWith<"result matches ptr type", "ptr", "result", "getPointeeType($_self)">,
+  TypesMatchWith<"mask type matches ptr type", "ptr", "mask", "getI1SameShape(getPointeeType($_self))",
+                 "($_op.getOperands().size() <= 1) || std::equal_to<>()">,
+  TypesMatchWith<"other matches ptr type", "ptr", "other", "getPointeeType($_self)",
+                 "($_op.getOperands().size() <= 2) || std::equal_to<>()">
+]> {
+    let summary = "Load from a tensor of pointers or from a tensor pointer";
+
+    let arguments = (
+      ins
+      AnyTypeOf<[TT_PtrLike, TT_TensorPtr]>:$ptr
+    );
+
+    let results = (outs TT_Type:$result);
+
+    let builders = [
+        // A tensor of pointers or a pointer to a scalar
+        OpBuilder<(ins "Value":$ptr, "Value::":$cache,
+                       "triton::EvictionPolicy":$evict, "bool":$isVolatile)>>
+    ];
+
+    // Specify `cacheModifier` and `evictionPolicy` explicitly in the
+    // assemblyFormat instead of as part of attr-dict so that they get printed
+    // as strings rather than opaque integers.
+    //
+    // Note there's no comma between `other` and `cacheModifier` and between
+    // `cacheModifier` and `evictionPolicy`.  This is due to an apparent
+    // limitation in the MLIR custom-format parser.  In oilist, the initial
+    // keywords of each clause have to be unique, so they can't be `,`.
+    //
+    // Even if we gave up on order-independence and used vanilla optional
+    // clauses, the format (`,` `foo` `=` $foo^)? (`,` `bar` `=` $bar^)?  will
+    // not match the string ", bar = 0" because after the initial comma (first
+    // token of the first optional clause) we expect to see "foo".
+    let assemblyFormat = [{
+      $ptr
+      attr-dict `:` type($ptr)
+    }];
+}
+*/
+
 #endif

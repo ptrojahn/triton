@@ -67,7 +67,8 @@ struct ConvertTritonAMDGPUToLLVM
     : public triton::impl::ConvertTritonAMDGPUToLLVMBase<
           ConvertTritonAMDGPUToLLVM> {
   explicit ConvertTritonAMDGPUToLLVM(StringRef targetArch, bool ftz) {
-    this->arch = targetArch.str();
+    this->arch = "gfx1201";//targetArch.str();
+    llvm::outs() << "targetArch: " << targetArch.str() << "\n";
     this->ftz = ftz;
   }
 

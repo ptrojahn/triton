@@ -9,6 +9,7 @@
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/Transforms/Utility.h"
 #include "llvm/ADT/STLExtras.h"
+#include "Dialect/TritonAMDGPU/IR/Dialect.h"
 
 using namespace mlir;
 namespace ttg = mlir::triton::gpu;
@@ -154,6 +155,40 @@ static void moveUpTranspose(triton::FuncOp funcOp) {
   for (auto op : transOps)
     if (Operation *argOp = op.getSrc().getDefiningOp())
       op->moveAfter(argOp);
+}
+
+// Move transpositions just after their definition.
+static void improveWMMALDSReadCoalescing(triton::FuncOp funcOp) {
+  /*IRRewriter b(funcOp);
+  SmallVector<mlir::triton::gpu::LocalLoadOp> localLoadOps;
+  funcOp.walk([&](mlir::triton::gpu::LocalLoadOp op) { localLoadOps.push_back(op); });
+  llvm::outs() << "Test!!!!\n";
+
+  for (auto op : localLoadOps) {
+    RankedTensorType resultType = cast<RankedTensorType>(op.getResult().getType());
+    if (mlir::triton::gpu::DotOperandEncodingAttr resultLayout = cast<mlir::triton::gpu::DotOperandEncodingAttr>(resultType.getEncoding())) {
+      mlir::Value localAlloc = op.getOperand(0);
+      mlir::triton::LoadOp loadOp = cast<mlir::triton::LoadOp>(localAlloc.getDefiningOp()->getOperand(0).getDefiningOp());
+      loadOp->dumpPretty();
+      mlir::Value blockedTensor = loadOp->getResult(0);
+      auto blockedTensorType = cast<RankedTensorType>(blockedTensor.getType());
+      auto blockedEncoding = cast<mlir::triton::gpu::BlockedEncodingAttr>(blockedTensorType.getEncoding());
+      auto order = blockedEncoding.getOrder();
+      if (resultLayout.getOpIdx() == 1 && order[0] == 1) {
+        llvm::outs() << "Found dot_op<opIdx = 1> with row major blocked layout! " << op << "\n";
+        llvm::outs() << "loadOp: " << loadOp << "Ptr: " << loadOp.getPtr() << "\n";
+        auto blockedEncodingTransposed = mlir::triton::gpu::BlockedEncodingAttr::get(blockedEncoding.getContext(),
+          {blockedEncoding.getSizePerThread()[1], blockedEncoding.getSizePerThread()[0]},
+          {blockedEncoding.getThreadsPerWarp()[1], blockedEncoding.getThreadsPerWarp()[0]},
+          blockedEncoding.getWarpsPerCTA(), blockedEncoding.getOrder(), blockedEncoding.getCTALayout()
+        );
+        auto newBlockedTensorType = blockedTensorType.cloneWithEncoding(blockedEncodingTransposed);
+        b.setInsertionPoint(loadOp);
+        loadOp.getPtr().dump();
+        b.replaceOpWithNewOp<mlir::triton::amdgpu::LoadWarpTransposeOp>(loadOp, newBlockedTensorType, loadOp.getPtr());
+      }
+    }
+  }*/
 }
 
 // Schedule global load and local store ops for better GEMM performance.
@@ -342,6 +377,7 @@ struct TritonAMDGPUReorderInstructionsPass
       moveDownCoversion(funcOp);
 
       moveUpTranspose(funcOp);
+      improveWMMALDSReadCoalescing(funcOp);
 
       if (isPureMatmulFunc(funcOp)) {
         scheduleGlobalLoadLocalStore(funcOp);

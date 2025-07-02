@@ -746,7 +746,7 @@ bool matchWMMAAndDotOperandShuffleCase(RankedTensorType srcTy,
 
   auto dotOperandWmmaLayout = dyn_cast<AMDWmmaEncodingAttr>(dotOperandLayout.getParent());
   
-  return wmmaLayout.getIsTransposed() &&
+  return wmmaLayout.getIsTransposed() && wmmaLayout.getVersion() == 1 &&
         // We apply chained dot optimization to following combinations:
         // result type of first dot {FP32}, will be truncated to {FP16, BF16}
         // operand type of second dot {FP16, BF16}

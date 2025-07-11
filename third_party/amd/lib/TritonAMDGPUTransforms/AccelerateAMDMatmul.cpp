@@ -1053,7 +1053,7 @@ public:
     auto CTALayout = ttg::getCTALayout(oldRetEncoding);
 
     // TODO implement heuristic/option for this parameter
-    bool isTransposed = isChainDotHead(dotOp);
+    bool isTransposed = false;
     wmmaEnc = ttg::AMDWmmaEncodingAttr::get(ctx, wmmaVersion, isTransposed,
                                             warpsPerTile, CTALayout);
 

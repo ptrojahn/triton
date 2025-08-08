@@ -2,6 +2,7 @@
 #include "PatternTritonGPUOpToLLVM.h"
 #include "Utility.h"
 #include "mlir/Dialect/LLVMIR/ROCDLDialect.h"
+#include "mlir/Dialect/AMDGPU/IR/AMDGPUDialect.h"
 
 using namespace mlir;
 

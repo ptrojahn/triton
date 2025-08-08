@@ -62,7 +62,7 @@ int getNumberOfLoadInstructions(Operation *op) {
         count += getNumberOfLoadInstructions(copyOp.getSrc().getType(),
                                              copyOp.getResult().getType());
       } else if (auto copyOp =
-                     llvm::dyn_cast<amdgpu::BufferLoadToLocalOp>(defOp)) {
+                     llvm::dyn_cast<triton::amdgpu::BufferLoadToLocalOp>(defOp)) {
         auto srcTy = cast<RankedTensorType>(LLVM::AMD::getPointerTypeWithShape(
             copyOp.getPtr(), copyOp.getOffsets()));
         count += getNumberOfLoadInstructions(srcTy, copyOp.getDest().getType());
@@ -70,9 +70,9 @@ int getNumberOfLoadInstructions(Operation *op) {
     }
     return count;
   }
-  if (isa<tt::LoadOp, tt::StoreOp, amdgpu::BufferLoadToLocalOp,
-          amdgpu::BufferStoreOp, tt::AtomicRMWOp, tt::AtomicCASOp,
-          amdgpu::BufferAtomicRMWOp>(op)) {
+  if (isa<tt::LoadOp, tt::StoreOp, triton::amdgpu::BufferLoadToLocalOp,
+          triton::amdgpu::BufferStoreOp, tt::AtomicRMWOp, tt::AtomicCASOp,
+          triton::amdgpu::BufferAtomicRMWOp>(op)) {
     op->emitRemark("Global memory operation between async wait and "
                    "async_loads. This will hinder the interleaving of memory "
                    "operations and might impact performance.");

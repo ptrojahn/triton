@@ -5,6 +5,7 @@
 #include "lld/Common/Driver.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Target/LLVMIR/Dialect/ROCDL/ROCDLToLLVMIRTranslation.h"
+#include "mlir/Dialect/AMDGPU/IR/AMDGPUDialect.h"
 #include "passes.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/Constants.h"
@@ -150,6 +151,7 @@ void init_triton_amd(py::module &&m) {
   m.def("load_dialects", [](mlir::MLIRContext &context) {
     mlir::DialectRegistry registry;
     registry.insert<mlir::triton::amdgpu::TritonAMDGPUDialect>();
+    registry.insert<mlir::amdgpu::AMDGPUDialect>();
     // registry.insert<mlir::ROCDL::ROCDLDialect>();
     mlir::registerROCDLDialectTranslation(registry);
     context.appendDialectRegistry(registry);

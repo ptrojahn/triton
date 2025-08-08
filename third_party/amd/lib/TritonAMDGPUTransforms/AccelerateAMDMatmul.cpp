@@ -733,8 +733,8 @@ public:
       // TODO: Emit device assert to check scale tensor range fitting into fp16?
       Type outputElemType = useFp16 ? b.getF16Type() : b.getBF16Type();
       auto outputType =
-          amdgpu::UpcastMXFPOp::deduceOutputType(v, elemType, outputElemType);
-      return rewriter.create<amdgpu::UpcastMXFPOp>(
+          triton::amdgpu::UpcastMXFPOp::deduceOutputType(v, elemType, outputElemType);
+      return rewriter.create<triton::amdgpu::UpcastMXFPOp>(
           dotOp.getLoc(), outputType, v, convOp, elemType, fastMath);
     };
 

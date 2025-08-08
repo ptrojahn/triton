@@ -24,7 +24,7 @@ using ::mlir::LLVM::AMD::upcast8xMxfp4_SW;
 namespace {
 
 SmallVector<Value, 8> upcastMxfp4_SW(RewriterBase &rewriter,
-                                     amdgpu::UpcastMXFPOp upcastOp, bool toFp16,
+                                     triton::amdgpu::UpcastMXFPOp upcastOp, bool toFp16,
                                      ArrayRef<Value> values, int idx) {
   Location loc = upcastOp.getLoc();
   auto b = TritonLLVMOpBuilder(loc, rewriter);
@@ -138,7 +138,7 @@ SmallVector<Value, 2> upcast4xMxfp8_HW(RewriterBase &rewriter, Location loc,
 // Upcast 8 mxfp4 values from xVals starting at idx using the given scale
 // factor, and store the results into yVals
 static void upcast8xMxfp4(RewriterBase &rewriter, Location loc,
-                          AMD::ISAFamily isaFamily, amdgpu::UpcastMXFPOp op,
+                          AMD::ISAFamily isaFamily, triton::amdgpu::UpcastMXFPOp op,
                           ArrayRef<Value> xVals, bool useFp16, int idx,
                           Value scale, SmallVector<Value> &yVals) {
   auto b = TritonLLVMOpBuilder(loc, rewriter);
@@ -210,7 +210,7 @@ static void upcast4xMxfp8(RewriterBase &rewriter, Location loc,
 }
 
 class UpcastMXFPOpPattern
-    : public ConvertOpToLLVMPattern<amdgpu::UpcastMXFPOp> {
+    : public ConvertOpToLLVMPattern<triton::amdgpu::UpcastMXFPOp> {
 private:
   const AMD::TargetInfo &targetInfo;
 
@@ -221,7 +221,7 @@ public:
   }
 
   LogicalResult
-  matchAndRewrite(amdgpu::UpcastMXFPOp op, OpAdaptor adaptor,
+  matchAndRewrite(triton::amdgpu::UpcastMXFPOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto isaFamily = targetInfo.getISAFamily();
     auto fpType = op.getFpType();

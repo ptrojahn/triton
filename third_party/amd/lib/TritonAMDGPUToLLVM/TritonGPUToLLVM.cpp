@@ -8,6 +8,8 @@
 #include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
 #include "mlir/Conversion/GPUToNVVM/GPUToNVVMPass.h"
 #include "mlir/Conversion/GPUToROCDL/GPUToROCDLPass.h"
+#include "mlir/Conversion/AMDGPUToROCDL/AMDGPUToROCDL.h"
+#include "mlir/Dialect/AMDGPU/IR/AMDGPUDialect.h"
 #include "mlir/Conversion/MathToLLVM/MathToLLVM.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "mlir/Conversion/UBToLLVM/UBToLLVM.h"
@@ -77,6 +79,19 @@ struct ConvertTritonAMDGPUToLLVM
         .insert<LLVM::LLVMDialect, NVVM::NVVMDialect, mlir::ROCDL::ROCDLDialect,
                 mlir::triton::amdgpu::TritonAMDGPUDialect>();
   }
+
+struct BarrierOpConversion
+    : public ConvertOpToLLVMPattern<mlir::gpu::BarrierOp> {
+  using ConvertOpToLLVMPattern::ConvertOpToLLVMPattern;
+
+  LogicalResult
+  matchAndRewrite(mlir::gpu::BarrierOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    llvm::outs() << "Hit!\n";
+    rewriter.replaceOpWithNewOp<mlir::amdgpu::LDSBarrierOp>(op);
+    return success();
+  }
+};
 
   void runOnOperation() override {
     MLIRContext *context = &getContext();
@@ -223,6 +238,10 @@ struct ConvertTritonAMDGPUToLLVM
     // Native lowering patterns
     mlir::populateGpuToROCDLConversionPatterns(
         typeConverter, patterns, mlir::gpu::amd::HIP, *maybeChipset);
+    
+    patterns.add<BarrierOpConversion>(typeConverter, commonBenefit);
+    mlir::populateAMDGPUToROCDLConversionPatterns(
+        typeConverter, patterns, *maybeChipset);
 
     mlir::cf::populateControlFlowToLLVMConversionPatterns(typeConverter,
                                                           patterns);

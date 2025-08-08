@@ -20,10 +20,10 @@ using namespace mlir::triton;
 namespace {
 
 struct ExtractSliceOpConversion
-    : public ConvertOpToLLVMPattern<amdgpu::ExtractSliceOp> {
+    : public ConvertOpToLLVMPattern<triton::amdgpu::ExtractSliceOp> {
   using ConvertOpToLLVMPattern::ConvertOpToLLVMPattern;
 
-  LogicalResult processLayout(amdgpu::ExtractSliceOp op, OpAdaptor adaptor,
+  LogicalResult processLayout(triton::amdgpu::ExtractSliceOp op, OpAdaptor adaptor,
                               ConversionPatternRewriter &rewriter) const {
     Location loc = op->getLoc();
     auto srcTy = cast<RankedTensorType>(op.getSource().getType());
@@ -104,7 +104,7 @@ struct ExtractSliceOpConversion
   }
 
   LogicalResult
-  matchAndRewrite(amdgpu::ExtractSliceOp op, OpAdaptor adaptor,
+  matchAndRewrite(triton::amdgpu::ExtractSliceOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto srcTy = op.getSource().getType();
     return processLayout(op, adaptor, rewriter);

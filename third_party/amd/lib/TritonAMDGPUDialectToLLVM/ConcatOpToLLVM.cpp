@@ -13,11 +13,11 @@ template <typename T> unsigned getNumElements(const ArrayRef<T> shape) {
   return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
 }
 
-struct ConcatOpConversion : public ConvertOpToLLVMPattern<amdgpu::ConcatOp> {
+struct ConcatOpConversion : public ConvertOpToLLVMPattern<triton::amdgpu::ConcatOp> {
   using ConvertOpToLLVMPattern::ConvertOpToLLVMPattern;
 
   LogicalResult
-  matchAndRewrite(amdgpu::ConcatOp op, OpAdaptor adaptor,
+  matchAndRewrite(triton::amdgpu::ConcatOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Location loc = op.getLoc();
     RankedTensorType resultType =

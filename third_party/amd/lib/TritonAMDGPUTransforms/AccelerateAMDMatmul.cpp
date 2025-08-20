@@ -1254,11 +1254,8 @@ public:
           /*benefit=*/2);
       break;
     case ISAFamily::RDNA3:
-      // Only gfx12 is supported for now
-      if (getWmmaVersion(archGenerationName) == 2) {
-        ttg::populateDecomposeScaledBlockedPatterns(patterns,
-                                                    /*benefit=*/3);
-      }
+      ttg::populateDecomposeScaledBlockedPatterns(patterns,
+                                                  /*benefit=*/3);
       patterns.add<::BlockedToWMMA>(context, getWmmaVersion(archGenerationName),
                                     /*benefit=*/2);
       break;

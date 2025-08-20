@@ -696,7 +696,7 @@ LogicalResult DotOperandEncodingAttr::verify(
   }
 
   if (auto parentAttr = mlir::dyn_cast<AMDWmmaEncodingAttr>(parent)) {
-    if (kWidth != 16 && parentAttr.getVersion() == 1 ||
+    if (kWidth != 8 && kWidth != 16 && parentAttr.getVersion() == 1 ||
         kWidth != 4 && kWidth != 8 && kWidth != 16 &&
             parentAttr.getVersion() == 2)
       return emitError() << "ttg.dot_op kWidth parameter must be 16 for "

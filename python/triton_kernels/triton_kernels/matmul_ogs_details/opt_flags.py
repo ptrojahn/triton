@@ -97,7 +97,7 @@ def make_default_opt_flags_amd(
         n_cu = torch.cuda.get_device_properties(0).multi_processor_count
         split_k = max(1, n_cu // grid_size)
     # w_cache_modifier:
-    w_cache_modifier = ".cg" if block_m <= 32 else None
+    w_cache_modifier = None
     # num_warps, num_stages
     num_warps = 2 if (m is not None and m <= 16) else 8
     num_stages = 2

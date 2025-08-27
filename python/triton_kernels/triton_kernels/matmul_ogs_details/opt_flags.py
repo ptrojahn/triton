@@ -101,6 +101,12 @@ def make_default_opt_flags_amd(
     # num_warps, num_stages
     num_warps = 2 if (m is not None and m <= 16) else 8
     num_stages = 2
+
+    if m >= 512:
+        block_m = 128
+        block_n = 128
+        block_k = 64
+
     # AMD-specific
     target_kernel_kwargs = {"waves_per_eu": 0, "matrix_instr_nonkdim": 16, "kpack": 1}
     ret = OptFlags(

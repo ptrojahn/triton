@@ -102,7 +102,7 @@ def make_default_opt_flags_amd(
     num_warps = 2 if (m is not None and m <= 16) else 8
     num_stages = 2
 
-    if m >= 512:
+    if m >= 1024:
         block_m = 128
         block_n = 128
         block_k = 64

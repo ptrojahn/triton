@@ -78,7 +78,7 @@ warpsPerTile(Operation *dotOp, ArrayRef<int64_t> shape, int numWarps,
   // 2) layout conversion from #mma to #dot_op of the second dot.
   if (isHeadDot)
     return {static_cast<unsigned>(numWarps), 1};
-  if (shape[0] == 128 && shape[1] == 128)
+  if ((shape[0] == 16 || shape[0] == 32 || shape[0] == 64 || shape[0] == 128) && shape[1] == 128)
     return {1, static_cast<unsigned>(numWarps)};
   // For the 2nd dot in chain-dot, we always distribute warp along dim0 first,
   // then dim1. Because

@@ -102,11 +102,22 @@ def make_default_opt_flags_amd(
     num_warps = 2 if (m is not None and m <= 16) else 8
     num_stages = 2
 
-    if m >= 1024:
+    # The k dimension should be large enough so that we never have to run more than
+    # one block on the m dimension but small enough so that we don't unnecessarily
+    # reserve registers and LDS
+    if m > 256*1.5*4:
         block_m = 128
         block_n = 128
         block_k = 64
-
+    else:
+        if m <= 64*4:
+            block_m = 16
+        elif m <= 128*1.5*4:
+            block_m = 32
+        else:
+            block_m = 64
+        block_n = 128
+        block_k = 128
     # AMD-specific
     target_kernel_kwargs = {"waves_per_eu": 0, "matrix_instr_nonkdim": 16, "kpack": 1}
     ret = OptFlags(

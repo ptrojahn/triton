@@ -78,6 +78,7 @@ inline void registerTritonDialects(mlir::DialectRegistry &registry) {
   mlir::triton::registerConvertTritonGPUToLLVMPass();
   mlir::triton::registerConvertNVGPUToLLVMPass();
   mlir::triton::registerAllocateSharedMemoryNvPass();
+  mlir::registerTritonAMDGPUCreateFp4Lut();
   mlir::registerLLVMDIScope();
 
   // TritonAMDGPUToLLVM passes

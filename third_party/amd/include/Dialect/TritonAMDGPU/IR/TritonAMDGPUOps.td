@@ -563,6 +563,19 @@ def InThreadTransposeOp : TT_AMDGPU_Op<"in_thread_transpose", [Pure]> {
   }];
 }
 
+def TableLookupOp : TT_AMDGPU_Op<"table_lookup", [
+]> {
+    let summary = "Load from a 1D shared memory tensor with dynamic offsets";
+
+    let arguments = (ins
+      Arg<TTG_MemDescType, "", [MemRead<SharedMemory>]>:$src,
+      TT_Tensor:$index
+    );
+
+    let results = (outs TT_Tensor:$result);
+    //let assemblyFormat = "type($src) attr-dict `:` type($index) `->` type($result)";
+}
+
 //===----------------------------------------------------------------------===//
 // LocalLoadPackedTransposedOp
 //===----------------------------------------------------------------------===//

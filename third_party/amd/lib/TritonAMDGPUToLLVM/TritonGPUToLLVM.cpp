@@ -64,6 +64,33 @@ public:
   }
 };
 
+namespace {
+class TableLookupOpPattern : public ConvertOpToLLVMPattern<mlir::triton::amdgpu::TableLookupOp> {
+public:
+  TableLookupOpPattern(LLVMTypeConverter &typeConverter, PatternBenefit benefit)
+      : ConvertOpToLLVMPattern<mlir::triton::amdgpu::TableLookupOp>(typeConverter, benefit) {}
+
+  LogicalResult
+  matchAndRewrite(mlir::triton::amdgpu::TableLookupOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+
+    auto lut = op.getSrc();
+    auto loc = op.getLoc();
+    auto llIndex = unpackLLElements(loc, adaptor.getIndex(), rewriter);
+
+    SmallVector<Value> resultSV;
+    for (int i = 0; i < llIndex.size(); i++) {
+      resultSV.push_back(mlir::LLVM::createConstantBF16(loc, rewriter, 1.0));
+      resultSV.push_back(mlir::LLVM::createConstantBF16(loc, rewriter, 1.0));
+    }
+
+    Value result = packLLElements(loc, getTypeConverter(), resultSV, rewriter, op.getType());
+    rewriter.replaceOp(op, result);
+    return success();
+  }
+};
+} // anonymous namespace
+
 struct ConvertTritonAMDGPUToLLVM
     : public triton::impl::ConvertTritonAMDGPUToLLVMBase<
           ConvertTritonAMDGPUToLLVM> {
@@ -76,6 +103,26 @@ struct ConvertTritonAMDGPUToLLVM
     registry
         .insert<LLVM::LLVMDialect, NVVM::NVVMDialect, mlir::ROCDL::ROCDLDialect,
                 mlir::triton::amdgpu::TritonAMDGPUDialect>();
+  }
+
+  /*
+LogicalResult
+  matchAndRewrite(triton::amdgpu::BufferLoadToLocalOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    auto b = TritonLLVMOpBuilder(loc, rewriter);
+    LLVM::AMD::BufferEmitter bufferEmitter(rewriter, loc, targetInfo);
+
+    // Original values
+    Value ptr = op.getPtr();
+    Value offset = op.getOffsets();
+    Value mask = op.getMask();
+*/
+
+  void populateTableLookupToLLVMPatterns(
+      LLVMTypeConverter &typeConverter, RewritePatternSet &patterns,
+      PatternBenefit benefit) {
+    patterns.add<TableLookupOpPattern>(typeConverter, benefit);
   }
 
   void runOnOperation() override {
@@ -205,6 +252,8 @@ struct ConvertTritonAMDGPUToLLVM
     mlir::triton::AMD::populateUpcastMXFPToLLVMPatterns(typeConverter, patterns,
                                                         targetInfo, AMDBenefit);
     mlir::triton::AMD::populateFp4ToFpToLLVMPatterns(typeConverter, patterns,
+                                                     AMDBenefit);
+    populateTableLookupToLLVMPatterns(typeConverter, patterns,
                                                      AMDBenefit);
 
     // TODO(thomas): this should probably be done in a separate step to not

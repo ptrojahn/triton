@@ -146,6 +146,14 @@ def TritonAMDGPUConvertToBufferOps : Pass<"tritonamdgpu-convert-buffer-ops", "ml
   ];
 }
 
+def TritonAMDGPUCreateFp4Lut : Pass<"tritonamdgpu-create-fp4-lut", "mlir::triton::FuncOp"> {
+  let summary = "Replaces Fp4ToFp ops with a LDS lookup";
+
+  let description = [{This pass creates a LDS lookup table for fp4 -> fp16 conversion and rewrite Fp4ToFp ops to use it}];
+
+  let dependentDialects = ["mlir::triton::amdgpu::TritonAMDGPUDialect"];
+}
+
 def TritonAMDGPUBlockPingpong: Pass<"tritonamdgpu-block-pingpong", "mlir::ModuleOp"> {
   let summary = "Interleaving instructions from two warps on the same SIMD to better utilize matrix core";
 

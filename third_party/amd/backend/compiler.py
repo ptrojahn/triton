@@ -10,6 +10,7 @@ import re
 import functools
 import warnings
 from pathlib import Path
+import os
 
 
 def get_min_dot_size(target: GPUTarget):
@@ -441,7 +442,8 @@ class HIPBackend(BaseBackend):
         # the regression is not significant. It would be better to have some heuristics.
         if options.schedule_hint == 'attention':
             flags.append('sink-insts-to-avoid-spills')
-        features = '-real-true16' if 'gfx11' in options.arch else ''
+        force_true16 = os.getenv('FORCE_TRUE16', '0') == "1"
+        features = '-real-true16' if 'gfx11' in options.arch and not force_true16 else ''
         amdgcn = llvm.translate_to_asm(src, amd.TARGET_TRIPLE, options.arch, features, flags, options.enable_fp_fusion,
                                        False)
         if knobs.amd.dump_amdgcn:

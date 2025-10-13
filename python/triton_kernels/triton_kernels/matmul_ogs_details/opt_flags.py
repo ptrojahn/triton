@@ -127,21 +127,22 @@ def make_default_opt_flags_amd(
     if epilogue_subtile is None:
         epilogue_subtile = 1
 
-    # specific configs for F16 x MXFP4 on CDNA4
-    # Note that these configs will exceed LDS usage with async copy enabled
-    if is_cdna4 and bitwidth(lhs_dtype) == 16 and bitwidth(rhs_dtype) == 4 and precision_config.weight_scale is not None:
-        split_k = 1
-        if m <= 1024:
-            target_kernel_kwargs["waves_per_eu"] = 3
-            block_n = 128
-            block_k = 256
-            num_warps = 4
+    # The k dimension should be large enough so that we never have to run more than
+    # one block on the m dimension but small enough so that we don't unnecessarily
+    # reserve registers and LDS
+    if m > 256*1.5*4:
+        block_m = 128
+        block_n = 128
+        block_k = 64
+    else:
+        if m <= 64*4:
+            block_m = 16
+        elif m <= 128*1.5*4:
+            block_m = 32
         else:
-            target_kernel_kwargs["waves_per_eu"] = 0
             block_m = 64
-            block_n = 512
-            block_k = 256
-            num_warps = 8
+        block_n = 128
+        block_k = 128
 
     def replace_with_valid_constraint(k: str, v):
         if constraints.get(k, None) is not None:

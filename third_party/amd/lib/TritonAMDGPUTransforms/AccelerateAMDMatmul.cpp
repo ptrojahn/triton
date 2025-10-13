@@ -85,6 +85,9 @@ warpsPerTile(Operation *dotOp, ArrayRef<int64_t> shape, int numWarps,
   // Case 1: Early exit for batched matmul
   if (rank == 3)
     return {static_cast<unsigned>(numWarps), 1, 1};
+  
+  if ((shape[0] == 16 || shape[0] == 32 || shape[0] == 64 || shape[0] == 128) && shape[1] == 128)
+    return {1, static_cast<unsigned>(numWarps)};
 
   // Case 2: For FA-like pattern, i.e. result of 1st tl.dot is used as the opA
   // of the 2nd dot, we will set warpsPerCTA differently for 1st and 2nd dot

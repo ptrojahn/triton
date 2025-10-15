@@ -130,6 +130,7 @@ def make_default_opt_flags_amd(
     # The k dimension should be large enough so that we never have to run more than
     # one block on the m dimension but small enough so that we don't unnecessarily
     # reserve registers and LDS
+    #print(f"{m=}")
     if m > 256*1.5*4:
         block_m = 128
         block_n = 128
@@ -143,6 +144,7 @@ def make_default_opt_flags_amd(
             block_m = 64
         block_n = 128
         block_k = 128
+    #print(f"{block_m=} {block_n=} {block_k=}")
 
     def replace_with_valid_constraint(k: str, v):
         if constraints.get(k, None) is not None:

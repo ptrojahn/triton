@@ -1419,10 +1419,10 @@ struct FMulOpConversion
 
   explicit FMulOpConversion(LLVMTypeConverter &typeConverter,
                             ModuleAxisInfoAnalysis &axisAnalysisPass,
-                            AMD::ISAFamily isaFamily,
+                            AMD::TargetInfo targetInfo,
                             PatternBenefit benefit = patternBenefitDefault)
       : ElementwiseOpConversionBase(typeConverter, axisAnalysisPass, benefit),
-        isaFamily(isaFamily) {}
+        targetInfo(targetInfo) {}
 
   SmallVector<Value> createDestOps(arith::MulFOp op, OpAdaptor adaptor,
                                    ConversionPatternRewriter &rewriter,
@@ -1431,7 +1431,7 @@ struct FMulOpConversion
     auto lhsElemTy = getElementType(op.getLhs());
     auto rhsElemTy = getElementType(op.getRhs());
     if (lhsElemTy.isBF16() && rhsElemTy.isBF16()) {
-      if (isRDNA(isaFamily)) {
+      if (targetInfo.isRDNA()) {
         // To avoid casting to/from fp32, we compute a dot product with one
         // element of each vector set to zero.
         auto b = TritonLLVMOpBuilder(loc, rewriter);
@@ -1454,7 +1454,7 @@ struct FMulOpConversion
   }
 
 private:
-  AMD::ISAFamily isaFamily;
+  AMD::TargetInfo targetInfo;
 };
 
 struct FAddOpConversion
@@ -1870,8 +1870,8 @@ void populateElementwiseOpToLLVMPatterns(
   patterns.add<FDivOpConversion>(typeConverter, axisInfoAnalysis, benefit);
   patterns.add<FSubOpConversion>(typeConverter, axisInfoAnalysis, benefit);
   patterns.add<FAddOpConversion>(typeConverter, axisInfoAnalysis, benefit);
-  patterns.add<FMulOpConversion>(typeConverter, axisInfoAnalysis,
-                                 targetInfo.getISAFamily(), benefit);
+  patterns.add<FMulOpConversion>(typeConverter, axisInfoAnalysis, targetInfo,
+                                 benefit);
 
   patterns.add<ExtFOpConversion>(typeConverter, axisInfoAnalysis, benefit);
   patterns.add<TruncFOpConversion>(typeConverter, axisInfoAnalysis,

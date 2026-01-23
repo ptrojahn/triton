@@ -79,6 +79,9 @@ type_canonicalisation_dict = {
     "int1": "u1",
     "uint1": "u1",
     "i1": "u1",
+    # 4-bit integers:
+    "int4": "i4",
+    "uint4": "u4",
     # floating-point dtypes:
     "float8e4nv": "fp8e4nv",
     "float8e5": "fp8e5",
@@ -97,12 +100,14 @@ type_canonicalisation_dict = {
     "double": "fp64",
     "float64": "fp64",
     # signed integers:
+    "int4": "i4",
     "int8": "i8",
     "int16": "i16",
     "int": "i32",
     "int32": "i32",
     "int64": "i64",
     # unsigned integers:
+    "uint4": "u4",
     "uint8": "u8",
     "uint16": "u16",
     "uint32": "u32",
@@ -125,9 +130,9 @@ def canonicalize_ptr_dtype(dtype, is_const):
 
 BITWIDTH_DICT: Dict[str, int] = {
     **{f"u{n}": n
-       for n in (1, 8, 16, 32, 64)},
+       for n in (1, 4, 8, 16, 32, 64)},
     **{f"i{n}": n
-       for n in (1, 8, 16, 32, 64)},
+       for n in (1, 4, 8, 16, 32, 64)},
     **{f"fp{n}": n
        for n in (16, 32, 64)},
     **{f"fp8{suffix}": 8

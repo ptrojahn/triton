@@ -144,7 +144,6 @@ def bench_mlp(batch_per_expt, dim1, dim2, n_expts_tot, n_expts_act, x_dtype, w_d
     pc1 = PrecisionConfig(flex_ctx=FlexCtx(rhs_data=w1_flex), b_mx_scale=w1_scale)
     pc2 = PrecisionConfig(flex_ctx=FlexCtx(rhs_data=w2_flex), b_mx_scale=w2_scale)
 
-    # -- init activation --
     x_dp_local_fp8 = torch.randn((batch // n_ranks, dim1), device=dev).to(x_dtype)
     x_dp_local_bf16 = x_dp_local_fp8.to(torch.bfloat16)
 
@@ -155,7 +154,7 @@ def bench_mlp(batch_per_expt, dim1, dim2, n_expts_tot, n_expts_act, x_dtype, w_d
     expt_dict = make_expt_dict_uniform(EP, n_expts_tot)
     expt_assignment = make_expt_assignment(EP, n_expts_tot, expt_dict, torch.device(dev))
     fpath = Path(f"profile_{rank}")
-    proton.start(str(fpath), hook="triton")
+    #proton.start(str(fpath), hook="triton")
     g = torch.cuda.CUDAGraph()
     stream = torch.cuda.Stream()
     with torch.cuda.stream(stream):
@@ -165,11 +164,11 @@ def bench_mlp(batch_per_expt, dim1, dim2, n_expts_tot, n_expts_act, x_dtype, w_d
                     w1_ep_local, b1_ep_local, pc1, act1,  #
                     w2_ep_local, b2_ep_local, pc2,  #
                     n_expts_act, expt_assignment, rank, symm_mem_pool)
-    for i in range(100):
+    for i in range(256):
         g.replay()
     torch.cuda.synchronize()
     torch.distributed.barrier()
-    proton.finalize()
+    #proton.finalize()
     symm_mem_pool.release()
     return roofline.parse_profile(fpath.with_suffix(".hatchet"), useful_op_regex=".*matmul.*")
 
@@ -199,7 +198,7 @@ if __name__ == "__main__":
     # torchrun --nproc-per-node=2 ./bench_mlp.py --ep 2 --name gpt-oss-x2
     if not was_launched_with_torchrun():
         print("usage: torchrun --nproc-per-node=<EP> ./bench_mlp.py")
-    has_native_mx4 = torch.cuda.get_device_capability(0)[0] >= 10 or get_cdna_version() == 4
+    has_native_mx4 = False#(is_cuda() and torch.cuda.get_device_capability(0)[0] >= 10) or get_cdna_version() == 4
     world_size = int(os.environ["WORLD_SIZE"])
     local_rank = int(os.environ["LOCAL_RANK"])
     torch.distributed.init_process_group(backend="nccl", world_size=world_size, device_id=torch.device(local_rank))
@@ -215,6 +214,6 @@ if __name__ == "__main__":
     batch_ranges = [(2**(2 + k), 2**(3 + k), min(2**k, 32)) for k in range(8)]
     batch_sizes = list(chain(*[range(*r) for r in batch_ranges]))
     ep = torch.distributed.get_world_size()
-    roofline_mlp(batch_sizes, 5760, 5760, 128, 4, dtypes[0], dtypes[1], ep, name="mlp_moe")
+    roofline_mlp(batch_sizes, 3072, 5888, 32, 4, dtypes[0], dtypes[1], ep, name="mlp_moe")
     torch.distributed.barrier()
     torch.distributed.destroy_process_group()

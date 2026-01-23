@@ -341,16 +341,16 @@ OperandTypesVector getOperandTypesForWmmaOp(PatternRewriter &rewriter,
   Type f32 = rewriter.getF32Type();
   Type bf16 = rewriter.getBF16Type();
   Type i8 = rewriter.getIntegerType(8);
+  Type i4 = rewriter.getIntegerType(4);
   Type i32 = rewriter.getIntegerType(32);
   SmallVector<OperandTypesVector> applicableTypes = {
       // clang-format off
       {f16, f16, f32, f32},
       {bf16, bf16, f32, f32},
       {i8, i8, i32, i32},
+      {i4, i4, i32, i32},
       // {f16, f16, f16, f16},
       // {bf16, bf16, bf16, bf16},
-      // {i4, i4, i32, i32} - are supported configurations
-      // by WMMA instruction, but not supported by triton
       // clang-format on
   };
   if (version == 2 || version == 3) {

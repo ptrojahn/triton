@@ -879,6 +879,11 @@ void init_triton_ir(py::module &&m) {
              return Value(self.create<arith::ConstantIntOp>(
                  self.getBuilder().getI1Type(), v));
            })
+.def("get_int4",
+           [](TritonOpBuilder &self, int64_t v) -> Value {
+             return Value(self.create<arith::ConstantIntOp>(
+                 self.getBuilder().getType<IntegerType>(4), v));
+           })
       .def("get_int8",
            [](TritonOpBuilder &self, int64_t v) -> Value {
              return Value(self.create<arith::ConstantIntOp>(
@@ -968,6 +973,10 @@ void init_triton_ir(py::module &&m) {
            [](TritonOpBuilder &self) -> Type {
              return self.getBuilder().getI1Type();
            }) // or ret::copy?
+      .def("get_int4_ty",
+           [](TritonOpBuilder &self) -> Type {
+             return self.getBuilder().getType<IntegerType>(4);
+           })
       .def("get_int8_ty",
            [](TritonOpBuilder &self) -> Type {
              return self.getBuilder().getI8Type();

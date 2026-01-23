@@ -381,8 +381,8 @@ def check_bit_width(value, shift_value):
 
 
 class dtype(base_type):
-    SINT_TYPES = ['int8', 'int16', 'int32', 'int64']
-    UINT_TYPES = ['int1', 'uint8', 'uint16', 'uint32', 'uint64']
+    SINT_TYPES = ['int4', 'int8', 'int16', 'int32', 'int64']
+    UINT_TYPES = ['int1', 'uint4', 'uint8', 'uint16', 'uint32', 'uint64']
     FP_TYPES = ['fp8e4b15', 'fp8e4nv', 'fp8e4b8', 'fp8e5', 'fp8e5b16', 'fp16', 'bf16', 'fp32', 'fp64']
     STANDARD_FP_TYPES = ['fp16', 'bf16', 'fp32', 'fp64']
     OTHER_TYPES = ['void']
@@ -472,6 +472,9 @@ class dtype(base_type):
     def is_int1(self):
         return self.name == 'int1'
 
+    def is_int4(self):
+        return self.name == 'int4'
+
     def is_int8(self):
         return self.name == 'int8'
 
@@ -483,6 +486,9 @@ class dtype(base_type):
 
     def is_int64(self):
         return self.name == 'int64'
+
+    def is_uint4(self):
+        return self.name == 'uint4'
 
     def is_uint8(self):
         return self.name == 'uint8'
@@ -584,6 +590,8 @@ class dtype(base_type):
             return builder.get_void_ty()
         elif self.name == 'int1':
             return builder.get_int1_ty()
+        elif self.name in ('int4', 'uint4'):
+            return builder.get_int4_ty()
         elif self.name in ('int8', 'uint8'):
             return builder.get_int8_ty()
         elif self.name in ('int16', 'uint16'):
@@ -799,6 +807,8 @@ class slice_type(dtype):
 # scalar types
 void = dtype('void')
 int1 = dtype('int1')
+int4 = dtype('int4')
+uint4 = dtype('uint4')
 int8 = dtype('int8')
 int16 = dtype('int16')
 int32 = dtype('int32')
@@ -823,6 +833,10 @@ pi32_t = pointer_type(int32)
 def get_int_dtype(bitwidth: int, signed: bool) -> dtype:
     if bitwidth == 1:
         return int1
+    elif bitwidth == 4 and signed:
+        return int4
+    elif bitwidth == 4 and not signed:
+        return uint4
     elif bitwidth == 8 and signed:
         return int8
     elif bitwidth == 8 and not signed:

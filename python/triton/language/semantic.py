@@ -1494,9 +1494,9 @@ class TritonSemantic(Generic[TensorTy]):
             # All combinations of supported fp8 x fp8 are permitted
             pass
         else:
-            assert lhs.dtype in (tl.int8, tl.uint8, tl.float16, tl.bfloat16, tl.float32,
+            assert lhs.dtype in (tl.int4, tl.uint4, tl.int8, tl.uint8, tl.float16, tl.bfloat16, tl.float32,
                                  tl.float64), f"Unsupported lhs dtype {lhs.dtype}"
-            assert rhs.dtype in (tl.int8, tl.uint8, tl.float16, tl.bfloat16, tl.float32,
+            assert rhs.dtype in (tl.int4, tl.uint4, tl.int8, tl.uint8, tl.float16, tl.bfloat16, tl.float32,
                                  tl.float64), f"Unsupported rhs dtype {rhs.dtype}"
             assert lhs.dtype == rhs.dtype, f"Both operands must be same dtype. Got {lhs.dtype} and {rhs.dtype}"
 
@@ -1538,7 +1538,7 @@ class TritonSemantic(Generic[TensorTy]):
             and rhs.shape[-1].value >= min_dot_size[1], \
                 f"Input shapes should have M >= {min_dot_size[0]}, N >= {min_dot_size[1]} and K >= {min_dot_size[2]}"
         if lhs.type.scalar.is_int():
-            assert lhs.type.scalar == tl.int8, "only int8 supported!"
+            assert lhs.type.scalar in (tl.int4, tl.uint4, tl.int8), "only int4/int8 supported!"
             _0 = self.builder.get_int32(0)
             ret_scalar_ty = tl.int32
         elif out_dtype.is_bf16():

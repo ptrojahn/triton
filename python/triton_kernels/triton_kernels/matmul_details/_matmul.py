@@ -309,7 +309,8 @@ def _matmul(
     W += expt_id * stride_w_e
     WPtrs = W + (offs_w_k.to(index_type)[:, None] * stride_w_k + offs_w_n.to(index_type)[None, :] * stride_w_n)
     # compute output
-    acc = tl.zeros((BLOCK_N, BLOCK_M) if SWAP_XW else (BLOCK_M, BLOCK_N), dtype=tl.float32)
+    #acc = tl.zeros((BLOCK_N, BLOCK_M) if SWAP_XW else (BLOCK_M, BLOCK_N), dtype=tl.float32)
+    acc_int32 = tl.zeros((BLOCK_N, BLOCK_M) if SWAP_XW else (BLOCK_M, BLOCK_N), dtype=tl.int32)
     x_k_limit = K_X + BLOCK_K * SPLIT_K
     w_k_limit = K_W + PACKED_BLOCK_K_W * SPLIT_K
 
@@ -369,22 +370,40 @@ def _matmul(
                 tl.static_assert(SWAP_XW)
                 wT = mxfp4_to_bf16_triton(w.T, w_scales, mx_axis=1)
                 tl.static_assert(wT.dtype == tl.bfloat16)
-                acc = tl.dot(wT, x.T, acc, max_num_imprecise_acc=MAX_NUM_IMPRECISE_ACC, allow_tf32=ALLOW_TF32)
+                #####
+                #acc = tl.dot(wT, x.T, acc, max_num_imprecise_acc=MAX_NUM_IMPRECISE_ACC, allow_tf32=ALLOW_TF32)
             else:
                 rhs_k_pack: tl.constexpr = W_TRANSPOSE or not is_w_microscaled or W_K_DIVISOR != 2
-                acc = tl.dot_scaled(x, x_scales, x_format, w, w_scales, w_format, acc=acc, fast_math=True, rhs_k_pack=rhs_k_pack)
+                # Unpack x: two int4 packed in each int8
+                # x is loaded with PACKED_BLOCK_K_X = BLOCK_K // 2, so after unpacking it becomes BLOCK_K
+                x_unpacked = x.to(tl.int4)
+                # Unpack w: two int4 packed in each int8
+                # w is loaded with PACKED_BLOCK_K_W = BLOCK_K // 2, so after unpacking it becomes BLOCK_K
+                w_int = w.to(tl.int16)
+                w_low = (w_int & 0x0F).to(tl.int4)
+                w_high = ((w_int >> 4) & 0x0F).to(tl.int4)
+                w_joined = tl.permute(tl.join(w_low, w_high), (1, 0, 2))
+                w_unpacked = tl.permute(w_joined.reshape(w_int.shape[1], w_int.shape[0] * 2), (1, 0))
+                # Use int32 accumulator for int4 matmul
+                acc_int32 = tl.dot(x_unpacked, w_unpacked, acc=acc_int32, out_dtype=tl.int32)
+                #acc = tl.dot_scaled(x, x_scales, x_format, w, w_scales, w_format, acc=acc, fast_math=True, rhs_k_pack=rhs_k_pack)
             if SWIZZLE_MX_SCALE == "BLACKWELL_SCALE":
                 WMxScalePtrs += (MX_SCALE_BLOCK_K // 4 * SPLIT_K) * stride_w_mx_k
             else:
                 WMxScalePtrs += (PACKED_MX_BLOCK * SPLIT_K) * stride_w_mx_k
             if is_x_microscaled:
                 XMxScalePtrs += (MX_SCALE_BLOCK_K * SPLIT_K) * stride_x_mx_k
-        else:
+        #else:
             # if w.dtype.is_fp8() and not x.dtype.is_fp8():
             #     w = w.to(x.dtype)
-            acc = tl.dot(x, w, acc, max_num_imprecise_acc=MAX_NUM_IMPRECISE_ACC, allow_tf32=ALLOW_TF32)
+            #acc = tl.dot(x, w, acc, max_num_imprecise_acc=MAX_NUM_IMPRECISE_ACC, allow_tf32=ALLOW_TF32)
         XPtrs += (BLOCK_K * SPLIT_K) * stride_x_k
         WPtrs += (PACKED_BLOCK_K_W * SPLIT_K) * stride_w_k
+    
+    # Convert int32 accumulator to float32 after the K loop (for int4 path)
+    #if is_w_microscaled and SWIZZLE_MX_VALUE != "HOPPER_VALUE":
+    acc = acc_int32.to(tl.float32)
+    
     # bias + scale
     offs_m = off_m + tl.arange(0, BLOCK_M)
     offs_y_n = BLOCK_N * pid_n + tl.arange(0, BLOCK_N)

@@ -60,12 +60,13 @@ LogicalResult SharedMemoryAliasAnalysis::visitOperation(
 
 void SharedMemoryAliasAnalysis::visitNonControlFlowArguments(
     Operation *op, const RegionSuccessor &successor,
+    ValueRange successorInputs,
     ArrayRef<dataflow::Lattice<AliasInfo> *> argLattices, unsigned firstIndex) {
   auto wsOp = dyn_cast<triton::gpu::WarpSpecializePartitionsOp>(op);
   if (!wsOp) {
     setAllToEntryStates(argLattices.take_front(firstIndex));
     setAllToEntryStates(argLattices.drop_front(
-        firstIndex + successor.getSuccessorInputs().size()));
+        firstIndex + successorInputs.size()));
     return;
   }
 

@@ -146,6 +146,7 @@ private:
 
   void visitNonControlFlowArguments(
       Operation *op, const RegionSuccessor &successor,
+      ValueRange successorInputs,
       ArrayRef<dataflow::Lattice<AxisInfo> *> argLattices,
       unsigned firstIndex) override {
     if (auto forOp = dyn_cast<scf::ForOp>(op)) {
@@ -154,8 +155,8 @@ private:
       visitWarpSpecializeExplicitCaptures(ws, successor, argLattices);
     } else {
       setAllToEntryStates(argLattices.take_front(firstIndex));
-      setAllToEntryStates(argLattices.drop_front(
-          firstIndex + successor.getSuccessorInputs().size()));
+      setAllToEntryStates(
+          argLattices.drop_front(firstIndex + successorInputs.size()));
     }
   }
 

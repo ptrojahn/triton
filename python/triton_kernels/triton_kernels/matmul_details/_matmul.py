@@ -376,16 +376,18 @@ def _matmul(
                 rhs_k_pack: tl.constexpr = W_TRANSPOSE or not is_w_microscaled or W_K_DIVISOR != 2
                 # Unpack x: two int4 packed in each int8
                 # x is loaded with PACKED_BLOCK_K_X = BLOCK_K // 2, so after unpacking it becomes BLOCK_K
-                x_unpacked = x.to(tl.int4)
+                x_low, x_high = tl.split(x.to(tl.int4).to(tl.int8).reshape(x.shape[0], x.shape[1] // 2, 2))
+                x = x_low | (x_high << 4)
                 # Unpack w: two int4 packed in each int8
                 # w is loaded with PACKED_BLOCK_K_W = BLOCK_K // 2, so after unpacking it becomes BLOCK_K
-                w_int = w.to(tl.int16)
-                w_low = (w_int & 0x0F).to(tl.int4)
-                w_high = ((w_int >> 4) & 0x0F).to(tl.int4)
-                w_joined = tl.permute(tl.join(w_low, w_high), (1, 0, 2))
-                w_unpacked = tl.permute(w_joined.reshape(w_int.shape[1], w_int.shape[0] * 2), (1, 0))
+                #w_int = w.to(tl.int16)
+                #w_low = (w_int & 0x0F).to(tl.int4)
+                #w_high = ((w_int >> 4) & 0x0F).to(tl.int4)
+                #w_joined = tl.permute(tl.join(w_low, w_high), (1, 0, 2))
+                #w_unpacked = tl.permute(w_joined.reshape(w_int.shape[1], w_int.shape[0] * 2), (1, 0))
                 # Use int32 accumulator for int4 matmul
-                acc_int32 = tl.dot(x_unpacked, w_unpacked, acc=acc_int32, out_dtype=tl.int32)
+                #acc_int32 = tl.dot(x_unpacked, w_unpacked, acc=acc_int32, out_dtype=tl.int32)
+                acc_int32 = tl.dot(x, w.to(tl.int8), acc=acc_int32, out_dtype=tl.int32)
                 #acc = tl.dot_scaled(x, x_scales, x_format, w, w_scales, w_format, acc=acc, fast_math=True, rhs_k_pack=rhs_k_pack)
             if SWIZZLE_MX_SCALE == "BLACKWELL_SCALE":
                 WMxScalePtrs += (MX_SCALE_BLOCK_K // 4 * SPLIT_K) * stride_w_mx_k

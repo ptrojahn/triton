@@ -152,8 +152,12 @@ WmmaDatabase::WmmaDatabase(MLIRContext *context) {
       // wmma_i32_16x16x16_iu8
       TRITON_WMMA_v(1, 16, 16, i8T, i8T, 8, i32T,
                     "llvm.amdgcn.wmma.i32.16x16x16.iu8", 16, 16),
+      // TRITON_WMMA_v(2, 16, 16, i8T, i8T, 8, i32T,
+      //               "llvm.amdgcn.wmma.i32.16x16x16.iu8", 16, 8),
+      // wmma_i32_16x16x32_iu4 for RDNA4 (version 2) - V_WMMA_I32_16X16X32_IU4
+      // Uses packed int4 in int8: K=16 int8 elements = 32 int4 elements
       TRITON_WMMA_v(2, 16, 16, i8T, i8T, 8, i32T,
-                    "llvm.amdgcn.wmma.i32.16x16x16.iu8", 16, 8),
+                    "llvm.amdgcn.wmma.i32.16x16x32.iu4", 16, 8),
 
       // iu4 inputs
       // wmma_i32_16x16x16_iu4

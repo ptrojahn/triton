@@ -92,9 +92,8 @@ public:
 
   void visitNonControlFlowArguments(
       Operation *op, const RegionSuccessor &successor,
-      ValueRange successorInputs,
-      ArrayRef<dataflow::Lattice<AliasInfo> *> argLattices,
-      unsigned firstIndex) override;
+      ValueRange nonSuccessorInputs,
+      ArrayRef<dataflow::Lattice<AliasInfo> *> nonSuccessorInputLattices) override;
 };
 
 } // namespace mlir

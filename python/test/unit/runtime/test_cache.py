@@ -827,6 +827,7 @@ Compiling with fn_a
 Compiling with fn_a after modification
 """)
 
+
 def test_module_load_unload(device, fresh_knobs):
 
     @triton.jit

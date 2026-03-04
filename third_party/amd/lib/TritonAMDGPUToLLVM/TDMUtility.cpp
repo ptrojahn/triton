@@ -506,8 +506,10 @@ void emitTDMOperation(RewriterBase &rewriter, Location loc,
 
   assert(blockShape.size() <= 5);
 
+  auto v8i32Ty = VectorType::get(8, rewriter.getI32Type());
+  Value group4Zero = LLVM::ZeroOp::create(rewriter, loc, v8i32Ty);
+
   if (blockShape.size() > 2) {
-    // Use full variant for >2D tensors
     auto group0Vec = SmallVector<Value>(desc.begin(), desc.begin() + 4);
     auto group1Vec = SmallVector<Value>(desc.begin() + 4, desc.begin() + 12);
     auto group2Vec = SmallVector<Value>(desc.begin() + 12, desc.begin() + 16);
@@ -528,9 +530,8 @@ void emitTDMOperation(RewriterBase &rewriter, Location loc,
                                        : "llvm.amdgcn.tensor.store.from.lds";
     LLVM::createLLVMIntrinsicCallOp(
         rewriter, loc, intrinsicName, {},
-        {group0, group1, group2, group3, b.i32_val(0)});
+        {group0, group1, group2, group3, group4Zero, b.i32_val(0)});
   } else {
-    // Use d2 variant for 1D-2D tensors
     auto group0Vec = SmallVector<Value>(desc.begin(), desc.begin() + 4);
     auto group1Vec = SmallVector<Value>(desc.begin() + 4, desc.end());
 
@@ -542,11 +543,15 @@ void emitTDMOperation(RewriterBase &rewriter, Location loc,
 
     auto group0 = packLLVector(loc, group0Vec, rewriter);
     auto group1 = packLLVector(loc, group1Vec, rewriter);
+    auto v4i32Ty = VectorType::get(4, rewriter.getI32Type());
+    Value group2Zero = LLVM::ZeroOp::create(rewriter, loc, v4i32Ty);
+    Value group3Zero = LLVM::ZeroOp::create(rewriter, loc, v4i32Ty);
 
-    const char *intrinsicName = isLoad ? "llvm.amdgcn.tensor.load.to.lds.d2"
-                                       : "llvm.amdgcn.tensor.store.from.lds.d2";
-    LLVM::createLLVMIntrinsicCallOp(rewriter, loc, intrinsicName, {},
-                                    {group0, group1, b.i32_val(0)});
+    const char *intrinsicName = isLoad ? "llvm.amdgcn.tensor.load.to.lds"
+                                       : "llvm.amdgcn.tensor.store.from.lds";
+    LLVM::createLLVMIntrinsicCallOp(
+        rewriter, loc, intrinsicName, {},
+        {group0, group1, group2Zero, group3Zero, group4Zero, b.i32_val(0)});
   }
 }
 

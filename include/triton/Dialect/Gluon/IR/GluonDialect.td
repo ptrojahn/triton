@@ -15,8 +15,6 @@ def Gluon_Dialect : Dialect {
     "triton::gpu::TritonGPUDialect",
     "mlir::gpu::GPUDialect",
   ];
-  let useDefaultAttributePrinterParser = 1;
-  let usePropertiesForAttributes = 1;
 }
 
 #endif
